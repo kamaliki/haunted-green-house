@@ -8,15 +8,29 @@ parent: haunted-greenhouse-requirements.md
 # EnvironmentModule Specification
 
 ## Overview
-The EnvironmentModule is responsible for collecting, validating, storing, and monitoring environmental sensor data from the greenhouse. It provides real-time data streaming via WebSocket and triggers alerts when thresholds are breached.
+The EnvironmentModule is responsible for collecting, validating, storing, and monitoring environmental sensor data from the greenhouse. It subscribes to MQTT topics where IoT devices publish sensor readings, processes the data, stores it in InfluxDB2, and triggers alerts when thresholds are breached.
+
+## Architecture
+```
+IoT Devices (Simulated) 
+    ↓ (publish)
+MQTT Broker (Mosquitto/EMQX)
+    ↓ (subscribe)
+EnvironmentModule
+    ├→ Validate & Process
+    ├→ Store to InfluxDB2
+    ├→ Trigger Alerts → IrrigationModule (via MQTT)
+    └→ Broadcast via WebSocket → Dashboard
+```
 
 ## Module Responsibilities
-1. Collect sensor data from IoT devices
+1. Subscribe to MQTT topics for sensor data from IoT devices
 2. Validate and sanitize incoming sensor readings
 3. Store time-series data in InfluxDB2
 4. Stream real-time data to connected clients via WebSocket
 5. Evaluate alert conditions and trigger notifications
-6. Provide REST API for historical data queries
+6. Publish control commands and alerts to MQTT topics
+7. Provide REST API for historical data queries
 
 ## Sensors
 
@@ -35,17 +49,17 @@ The EnvironmentModule is responsible for collecting, validating, storing, and mo
 
 ## User Stories
 
-### US-ENV-001: Receive Sensor Data
+### US-ENV-001: Receive Sensor Data via MQTT
 **As a** IoT sensor device  
-**I want to** send sensor readings to the backend  
+**I want to** publish sensor readings to MQTT broker  
 **So that** environmental conditions are monitored in real-time
 
 **Acceptance Criteria**:
-- POST endpoint accepts sensor data with device ID and timestamp
+- Module subscribes to `greenhouse/sensors/+/+` wildcard topic
 - Data is validated against sensor type constraints
-- Invalid data returns 400 with detailed error message
-- Valid data returns 201 with confirmation
-- Data is persisted to InfluxDB2 within 100ms
+- Invalid data is logged and discarded (no crash)
+- Valid data is persisted to InfluxDB2 within 100ms
+- MQTT QoS level 1 (at least once delivery)
 
 ### US-ENV-002: Real-time Data Streaming
 **As a** greenhouse operator  
@@ -79,9 +93,22 @@ The EnvironmentModule is responsible for collecting, validating, storing, and mo
 **Acceptance Criteria**:
 - Alert triggers when temperature_air > 35°C or < 10°C
 - Alert includes timestamp, sensor ID, and current value
-- Alert is sent via email and WebSocket
+- Alert is published to MQTT topic `greenhouse/alerts/temperature_high` or `temperature_low`
+- Alert is sent via email and WebSocket to dashboard
 - No duplicate alerts within 5-minute window
 - Alert clears when temperature returns to normal range
+
+### US-ENV-006: Trigger Irrigation via Low Moisture Alert
+**As a** EnvironmentModule  
+**I want to** publish alerts when soil moisture is low  
+**So that** IrrigationModule can automatically start watering
+
+**Acceptance Criteria**:
+- Alert triggers when soil_moisture < 20%
+- Alert is published to `greenhouse/alerts/low_soil_moisture`
+- Alert payload includes device location and severity
+- IrrigationModule receives and processes the alert
+- Alert cooldown prevents spam (30 minutes)
 
 ### US-ENV-005: Sensor Health Monitoring
 **As a** greenhouse operator  
@@ -94,12 +121,14 @@ The EnvironmentModule is responsible for collecting, validating, storing, and mo
 - Dashboard shows sensor status (active/inactive)
 - Sensor automatically reactivates when data resumes
 
-## API Endpoints
+## MQTT Topics
 
-### POST /api/environment/sensors/data
-Submit sensor reading
+### Subscribed Topics (Incoming from Devices)
 
-**Request Body**:
+#### greenhouse/sensors/{deviceId}/{sensorType}
+Individual sensor readings
+
+**Payload**:
 ```json
 {
   "deviceId": "sensor-001",
@@ -110,19 +139,15 @@ Submit sensor reading
 }
 ```
 
-**Response**: 201 Created
-```json
-{
-  "success": true,
-  "message": "Sensor data recorded",
-  "id": "measurement-uuid"
-}
-```
+**Examples**:
+- `greenhouse/sensors/sensor-001/temperature_air`
+- `greenhouse/sensors/sensor-001/humidity_air`
+- `greenhouse/sensors/soil-sensor-01/soil_moisture`
 
-### POST /api/environment/sensors/batch
-Submit multiple sensor readings at once
+#### greenhouse/sensors/{deviceId}/batch
+Multiple readings from one device
 
-**Request Body**:
+**Payload**:
 ```json
 {
   "deviceId": "sensor-001",
@@ -141,6 +166,46 @@ Submit multiple sensor readings at once
   "timestamp": "2025-11-24T10:30:00Z"
 }
 ```
+
+### Published Topics (Outgoing to Other Modules)
+
+#### greenhouse/alerts/{alertType}
+Alert notifications
+
+**Payload**:
+```json
+{
+  "alertType": "low_soil_moisture",
+  "sensorType": "soil_moisture",
+  "deviceId": "soil-sensor-01",
+  "value": 15.2,
+  "threshold": 20,
+  "severity": "high",
+  "message": "Soil moisture below threshold - irrigation recommended",
+  "timestamp": "2025-11-24T10:30:00Z",
+  "targetModule": "irrigation"
+}
+```
+
+**Examples**:
+- `greenhouse/alerts/temperature_high`
+- `greenhouse/alerts/low_soil_moisture` → triggers IrrigationModule
+- `greenhouse/alerts/high_humidity`
+
+#### greenhouse/status/sensors
+Sensor health status updates
+
+**Payload**:
+```json
+{
+  "deviceId": "sensor-001",
+  "sensorType": "temperature_air",
+  "status": "active",
+  "lastReading": "2025-11-24T10:30:00Z"
+}
+```
+
+## API Endpoints
 
 ### GET /api/environment/sensors/data
 Query historical sensor data
@@ -348,10 +413,14 @@ src/modules/environment/
   ├── environment.controller.ts      # REST API endpoints
   ├── environment.service.ts         # Business logic
   ├── environment.gateway.ts         # WebSocket gateway
+  ├── mqtt/
+  │   ├── mqtt.service.ts            # MQTT client wrapper
+  │   └── environment-mqtt.service.ts # MQTT message handlers
   ├── dto/
   │   ├── sensor-reading.dto.ts      # Input validation
   │   ├── batch-reading.dto.ts
   │   ├── query-params.dto.ts
+  │   ├── alert.dto.ts
   │   └── sensor-status.dto.ts
   ├── entities/
   │   └── alert-threshold.entity.ts
@@ -361,10 +430,16 @@ src/modules/environment/
   └── tests/
       ├── environment.service.spec.ts
       ├── environment.controller.spec.ts
-      └── environment.gateway.spec.ts
+      ├── environment.gateway.spec.ts
+      └── environment-mqtt.service.spec.ts
+
+src/common/services/mqtt/
+  ├── mqtt-client.service.ts         # Shared MQTT client
+  └── mqtt.module.ts                 # Global MQTT module
 ```
 
 ### Dependencies
+- `mqtt` or `async-mqtt` - MQTT client
 - `@nestjs/websockets` - WebSocket support
 - `@nestjs/platform-socket.io` - Socket.io adapter
 - `@influxdata/influxdb-client` - InfluxDB2 client
@@ -374,10 +449,19 @@ src/modules/environment/
 
 ### Configuration (environment variables)
 ```
+# MQTT Broker
+MQTT_BROKER_URL=mqtt://localhost:1883
+MQTT_USERNAME=greenhouse
+MQTT_PASSWORD=your-password
+MQTT_CLIENT_ID=haunted-greenhouse-backend
+
+# InfluxDB
 INFLUXDB_URL=http://localhost:8086
 INFLUXDB_TOKEN=your-token
 INFLUXDB_ORG=haunted-greenhouse
 INFLUXDB_BUCKET=sensor-data
+
+# Module Settings
 SENSOR_HEALTH_CHECK_INTERVAL=300000  # 5 minutes in ms
 ALERT_COOLDOWN_MINUTES=5
 ```

@@ -12,6 +12,10 @@ dist/
 build/
 *.log
 
+# MQTT & Database
+mqtt/data/
+mqtt/log/
+
 # IDE
 .vscode/
 .idea/
