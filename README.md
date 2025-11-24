@@ -46,9 +46,15 @@ Dashboard & Mobile App
 ## Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for backend and simulator)
-- Kotlin & Android Studio (for mobile app)
+- **Docker & Docker Compose** - For MQTT broker and InfluxDB
+- **Node.js 18+** - For backend and simulator
+- **npm** - Package manager (comes with Node.js)
+- **Git** - Version control
+
+**Optional**:
+- **mosquitto-clients** - For testing MQTT (Linux: `apt-get install mosquitto-clients`, Mac: `brew install mosquitto`)
+- **MQTT Explorer** - GUI tool for monitoring MQTT traffic (http://mqtt-explorer.com/)
+- **Kotlin & Android Studio** - For mobile app (future)
 
 ### 1. Start Infrastructure
 

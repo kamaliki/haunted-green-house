@@ -67,14 +67,29 @@ Expected output:
 [Scenario] Running normal operation
 ```
 
-### 6. Watch the Magic Happen! ✨
+### 8. Verify Everything is Working ✅
 
-In the backend terminal, you should see:
+**Check Backend Logs** - You should see:
 ```
 [EnvironmentService] Processing sensor reading: sensor-001 - temperature_air: 24.5
 [EnvironmentService] Processing sensor reading: sensor-001 - humidity_air: 62.3
-[EnvironmentService] Processing sensor reading: sensor-001 - co2_level: 450
-...
+[EnvironmentService] Processing sensor reading: soil-sensor-01 - soil_moisture: 45.2
+```
+
+**Access Swagger API** - Open browser:
+```
+http://localhost:3000/api
+```
+
+**Access InfluxDB** - Open browser:
+```
+http://localhost:8086
+Login: admin / adminpassword
+```
+
+**Check MQTT Traffic** (if mosquitto-clients installed):
+```bash
+mosquitto_sub -h localhost -p 1883 -t "greenhouse/#" -v
 ```
 
 ## Test Scenarios
@@ -190,13 +205,24 @@ lsof -i :1883                 # Mac/Linux
 # Stop conflicting service or change port in docker-compose.yml
 ```
 
+## What's Implemented
+
+✅ **EnvironmentModule** - Sensor monitoring with 9 sensor types
+✅ **IrrigationModule** - Automatic irrigation triggered by low soil moisture
+✅ **MQTT Integration** - Real-time pub/sub communication
+✅ **InfluxDB Storage** - Time-series data storage
+✅ **Swagger API** - Interactive API documentation
+✅ **Device Simulator** - 4 IoT devices with test scenarios
+✅ **Alert System** - Configurable thresholds with cooldowns
+
 ## Next Steps
 
-1. ✅ EnvironmentModule is working!
-2. 🚧 Implement IrrigationModule (subscribes to low_soil_moisture alerts)
-3. 🚧 Add WebSocket Gateway for real-time dashboard
-4. 🚧 Implement PlantHealthModule (AI image analysis)
-5. 🚧 Build Android mobile app
+1. Explore Swagger API at http://localhost:3000/api
+2. Test irrigation control endpoints
+3. Run test scenarios (temperature spike, low moisture)
+4. View data in InfluxDB
+5. Implement PlantHealthModule (AI image analysis)
+6. Build Android mobile app
 
 ## Useful Commands
 
