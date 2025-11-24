@@ -75,6 +75,27 @@ export class InfluxDbService implements OnModuleInit {
     return this.influxDB.getQueryApi(this.org);
   }
 
+  async query(fluxQuery: string): Promise<any[]> {
+    const queryApi = this.getQueryApi();
+    const results: any[] = [];
+
+    return new Promise((resolve, reject) => {
+      queryApi.queryRows(fluxQuery, {
+        next: (row, tableMeta) => {
+          const record = tableMeta.toObject(row);
+          results.push(record);
+        },
+        error: (error) => {
+          this.logger.error(`Query error: ${error.message}`, error.stack);
+          reject(error);
+        },
+        complete: () => {
+          resolve(results);
+        },
+      });
+    });
+  }
+
   getBucket(): string {
     return this.bucket;
   }

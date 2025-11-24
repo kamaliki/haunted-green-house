@@ -184,12 +184,68 @@ export class EnvironmentService {
   }
 
   async getLatestReadings(): Promise<Record<string, any>> {
-    // TODO: Query InfluxDB for latest readings
-    return {};
+    try {
+      const query = `
+        from(bucket: "sensor-data")
+          |> range(start: -1h)
+          |> filter(fn: (r) => r._measurement == "sensor_readings")
+          |> filter(fn: (r) => r._field == "value")
+          |> group(columns: ["device_id", "sensor_type"])
+          |> last()
+      `;
+
+      const results = await this.influxDbService.query(query);
+      const readings: Record<string, any> = {};
+
+      for (const row of results) {
+        const key = `${row.device_id}_${row.sensor_type}`;
+        readings[key] = {
+          deviceId: row.device_id,
+          sensorType: row.sensor_type,
+          value: row._value,
+          timestamp: row._time,
+        };
+      }
+
+      return readings;
+    } catch (error) {
+      this.logger.error(`Failed to get latest readings: ${error.message}`);
+      return {};
+    }
   }
 
   async getSensorStatus(): Promise<any[]> {
-    // TODO: Query InfluxDB for sensor health status
-    return [];
+    try {
+      const query = `
+        from(bucket: "sensor-data")
+          |> range(start: -10m)
+          |> filter(fn: (r) => r._measurement == "sensor_readings")
+          |> filter(fn: (r) => r._field == "value")
+          |> group(columns: ["device_id", "sensor_type"])
+          |> last()
+      `;
+
+      const results = await this.influxDbService.query(query);
+      const sensorStatuses: any[] = [];
+
+      for (const row of results) {
+        const now = Date.now();
+        const lastSeen = new Date(row._time).getTime();
+        const minutesSinceLastReading = (now - lastSeen) / (1000 * 60);
+
+        sensorStatuses.push({
+          deviceId: row.device_id,
+          sensorType: row.sensor_type,
+          status: minutesSinceLastReading < 5 ? 'active' : 'inactive',
+          lastSeen: row._time,
+          lastValue: row._value,
+        });
+      }
+
+      return sensorStatuses;
+    } catch (error) {
+      this.logger.error(`Failed to get sensor status: ${error.message}`);
+      return [];
+    }
   }
 }

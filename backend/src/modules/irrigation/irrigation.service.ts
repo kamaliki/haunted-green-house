@@ -255,6 +255,34 @@ export class IrrigationService {
     return 'zone-a'; // default
   }
 
+  async adjustFlowRate(zone: string, flowRatePercent: number, initiatedBy: string): Promise<void> {
+    const session = this.activeSessions.get(zone);
+    
+    if (!session) {
+      throw new BadRequestException(`No active irrigation session for zone ${zone}`);
+    }
+
+    // Update session
+    session.flowRatePercent = flowRatePercent;
+
+    // Publish adjust command
+    const command: IrrigationCommand = {
+      command: 'adjust_flow',
+      zone,
+      flowRatePercent,
+      reason: 'manual_adjustment',
+      initiatedBy,
+      timestamp: new Date(),
+    };
+
+    await this.mqttClientService.publish(
+      `greenhouse/irrigation/${zone}/command`,
+      JSON.stringify(command),
+    );
+
+    this.logger.log(`Adjusted flow rate for ${zone} to ${flowRatePercent}%`);
+  }
+
   private isZoneActive(zone: string): boolean {
     return this.activeSessions.has(zone);
   }

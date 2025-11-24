@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { IrrigationService } from './irrigation.service';
-import { StartIrrigationDto, StopIrrigationDto } from './dto/start-irrigation.dto';
+import { StartIrrigationDto, StopIrrigationDto, AdjustFlowRateDto } from './dto/start-irrigation.dto';
 
 @ApiTags('irrigation')
 @Controller('api/irrigation')
@@ -44,6 +44,23 @@ export class IrrigationController {
     return {
       success: true,
       message: `Irrigation stopped for ${dto.zone}`,
+    };
+  }
+
+  @Post('adjust-flow')
+  @ApiOperation({ summary: 'Adjust flow rate for active irrigation' })
+  @ApiResponse({ status: 200, description: 'Flow rate adjusted successfully' })
+  @ApiResponse({ status: 400, description: 'No active irrigation session for zone' })
+  async adjustFlowRate(@Body() dto: AdjustFlowRateDto) {
+    await this.irrigationService.adjustFlowRate(
+      dto.zone,
+      dto.flowRatePercent,
+      dto.operatorId || 'manual-user',
+    );
+
+    return {
+      success: true,
+      message: `Flow rate adjusted to ${dto.flowRatePercent}% for ${dto.zone}`,
     };
   }
 
