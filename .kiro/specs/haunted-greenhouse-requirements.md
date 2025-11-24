@@ -167,19 +167,22 @@ A smart greenhouse with real-time IoT monitoring, AI-based alerts, image analysi
 ## Technical Requirements
 
 ### Backend
-- Node.js/TypeScript backend (already initialized)
+- NestJS backend with TypeScript (already initialized)
 - RESTful API for sensor data and control
-- WebSocket support for real-time updates
+- WebSocket Gateway for real-time updates
 - InfluxDB2 client integration
 - Email notification service
 - Image upload and processing pipeline
+- Swagger/OpenAPI documentation
 
 ### Mobile
-- React Native mobile app (already initialized)
-- Real-time dashboard
-- Push notifications
+- Android app with Kotlin (native)
+- MVVM + Clean Architecture
+- Real-time dashboard with WebSocket
+- Push notifications (FCM)
 - Image capture and upload
 - Manual control interface
+- Offline-first with local caching
 
 ### AI/ML
 - Plant disease detection model integration

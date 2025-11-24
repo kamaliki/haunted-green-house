@@ -8,16 +8,21 @@ inclusion: always
 
 ### Backend
 - **Runtime**: Node.js with TypeScript
-- **Framework**: Nestjs
+- **Framework**: NestJS
 - **Database**: InfluxDB2 (time-series data)
-- **Real-time**: WebSocket (Socket.io or native)
+- **Real-time**: WebSocket (NestJS Gateway)
 - **Testing**: Jest
+- **Validation**: class-validator, class-transformer
+- **ORM/Query**: TypeORM (if needed for relational data)
 
 ### Mobile
-- **Framework**: React Native
-- **State Management**: Redux or Zustand
-- **Navigation**: React Navigation
-- **UI Components**: React Native Paper or Native Base
+- **Platform**: Android (Kotlin)
+- **Architecture**: MVVM with Clean Architecture
+- **Networking**: Retrofit + OkHttp
+- **Async**: Coroutines + Flow
+- **DI**: Hilt
+- **UI**: Jetpack Compose
+- **Navigation**: Compose Navigation
 
 ### AI/ML
 - **Image Analysis**: TensorFlow.js or Python-based service
@@ -32,43 +37,84 @@ inclusion: always
 - Avoid `any` type
 
 ### Naming Conventions
-- **Files**: kebab-case (e.g., `environment-module.ts`)
-- **Classes**: PascalCase (e.g., `EnvironmentModule`)
+
+#### Backend (TypeScript/NestJS)
+- **Files**: kebab-case (e.g., `environment.module.ts`, `environment.service.ts`)
+- **Classes**: PascalCase (e.g., `EnvironmentModule`, `EnvironmentService`)
 - **Functions/Variables**: camelCase (e.g., `readSensorData`)
 - **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_TEMPERATURE`)
-- **Interfaces**: PascalCase with `I` prefix (e.g., `ISensorData`)
+- **Interfaces**: PascalCase without prefix (e.g., `SensorData`)
+- **DTOs**: PascalCase with suffix (e.g., `CreateSensorDataDto`)
+
+#### Mobile (Kotlin)
+- **Files**: PascalCase (e.g., `EnvironmentViewModel.kt`)
+- **Classes**: PascalCase (e.g., `EnvironmentViewModel`)
+- **Functions/Variables**: camelCase (e.g., `readSensorData`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_TEMPERATURE`)
+- **Packages**: lowercase (e.g., `com.hauntedgreenhouse.sensors`)
 
 ### Project Structure
+
+#### Backend (NestJS)
 ```
 backend/
   src/
     modules/
       environment/
+        environment.module.ts
+        environment.service.ts
+        environment.controller.ts
+        environment.gateway.ts
+        dto/
+        entities/
       irrigation/
       plant-health/
       analytics/
       security/
-    services/
-      influxdb/
-      alerts/
-      ai/
-    api/
-      routes/
-      controllers/
-      middleware/
-    types/
-    utils/
+    common/
+      services/
+        influxdb/
+        alerts/
+        ai/
+      guards/
+      interceptors/
+      filters/
+      decorators/
     config/
+      configuration.ts
+      validation.ts
+    main.ts
+  test/
 
 mobile/
-  src/
-    screens/
-    components/
-    services/
-    store/
-    navigation/
-    types/
-    utils/
+  app/
+    src/
+      main/
+        java/com/hauntedgreenhouse/
+          data/
+            repository/
+            remote/
+              api/
+              dto/
+            local/
+          domain/
+            model/
+            repository/
+            usecase/
+          presentation/
+            screens/
+              environment/
+              irrigation/
+              dashboard/
+            components/
+            navigation/
+            viewmodel/
+          di/
+          utils/
+        res/
+        AndroidManifest.xml
+    build.gradle.kts
+  build.gradle.kts
 ```
 
 ## IoT Best Practices
