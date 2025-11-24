@@ -76,7 +76,7 @@ export class MqttClientService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Subscribed to topic: ${topic}`);
     }
 
-    this.messageHandlers.get(topic).push(handler);
+    this.messageHandlers.get(topic)!.push(handler);
   }
 
   async unsubscribe(topic: string): Promise<void> {
