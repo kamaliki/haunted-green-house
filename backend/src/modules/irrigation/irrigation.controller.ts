@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Logger, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { IrrigationService } from './irrigation.service';
 import { StartIrrigationDto, StopIrrigationDto, AdjustFlowRateDto } from './dto/start-irrigation.dto';
@@ -69,5 +69,35 @@ export class IrrigationController {
   @ApiResponse({ status: 200, description: 'Returns status of all zones and reservoir' })
   getStatus() {
     return this.irrigationService.getStatus();
+  }
+
+  @Get('usage')
+  @ApiOperation({ summary: 'Get water usage statistics' })
+  @ApiResponse({ status: 200, description: 'Returns water usage data' })
+  async getUsage(
+    @Query('zone') zone?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.irrigationService.getUsageStatistics({
+      zone,
+      startTime: startTime || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      endTime: endTime || new Date().toISOString(),
+    });
+  }
+
+  @Get('history')
+  @ApiOperation({ summary: 'Get irrigation history' })
+  @ApiResponse({ status: 200, description: 'Returns irrigation session history' })
+  async getHistory(
+    @Query('zone') zone?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.irrigationService.getIrrigationHistory({
+      zone,
+      startTime: startTime || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      endTime: endTime || new Date().toISOString(),
+    });
   }
 }

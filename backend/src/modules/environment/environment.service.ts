@@ -248,4 +248,42 @@ export class EnvironmentService {
       return [];
     }
   }
+
+  async getHistoricalData(params: {
+    sensorType?: string;
+    deviceId?: string;
+    startTime: string;
+    endTime: string;
+  }): Promise<any[]> {
+    try {
+      let query = `
+        from(bucket: "sensor-data")
+          |> range(start: ${params.startTime}, stop: ${params.endTime})
+          |> filter(fn: (r) => r._measurement == "sensor_readings")
+          |> filter(fn: (r) => r._field == "value")
+      `;
+
+      if (params.sensorType) {
+        query += `\n  |> filter(fn: (r) => r.sensor_type == "${params.sensorType}")`;
+      }
+
+      if (params.deviceId) {
+        query += `\n  |> filter(fn: (r) => r.device_id == "${params.deviceId}")`;
+      }
+
+      query += `\n  |> sort(columns: ["_time"])`;
+
+      const results = await this.influxDbService.query(query);
+      
+      return results.map(row => ({
+        timestamp: row._time,
+        deviceId: row.device_id,
+        sensorType: row.sensor_type,
+        value: row._value,
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to get historical data: ${error.message}`);
+      return [];
+    }
+  }
 }

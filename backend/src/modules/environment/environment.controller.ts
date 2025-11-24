@@ -1,4 +1,4 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EnvironmentService } from './environment.service';
 
@@ -21,5 +21,22 @@ export class EnvironmentController {
   @ApiResponse({ status: 200, description: 'Returns health status of all sensors' })
   async getSensorStatus() {
     return this.environmentService.getSensorStatus();
+  }
+
+  @Get('sensors/history')
+  @ApiOperation({ summary: 'Get historical sensor data' })
+  @ApiResponse({ status: 200, description: 'Returns historical sensor readings' })
+  async getHistoricalData(
+    @Query('sensorType') sensorType?: string,
+    @Query('deviceId') deviceId?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.environmentService.getHistoricalData({
+      sensorType,
+      deviceId,
+      startTime: startTime || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      endTime: endTime || new Date().toISOString(),
+    });
   }
 }

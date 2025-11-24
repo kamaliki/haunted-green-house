@@ -283,6 +283,98 @@ export class IrrigationService {
     this.logger.log(`Adjusted flow rate for ${zone} to ${flowRatePercent}%`);
   }
 
+  async getUsageStatistics(params: {
+    zone?: string;
+    startTime: string;
+    endTime: string;
+  }): Promise<any> {
+    try {
+      let query = `
+        from(bucket: "sensor-data")
+          |> range(start: ${params.startTime}, stop: ${params.endTime})
+          |> filter(fn: (r) => r._measurement == "irrigation_sessions")
+          |> filter(fn: (r) => r._field == "duration_seconds")
+      `;
+
+      if (params.zone) {
+        query += `\n  |> filter(fn: (r) => r.zone == "${params.zone}")`;
+      }
+
+      const results = await this.influxDbService.query(query);
+
+      // Calculate statistics
+      const totalSessions = results.length;
+      const totalDuration = results.reduce((sum, row) => sum + (row._value || 0), 0);
+      const avgDuration = totalSessions > 0 ? totalDuration / totalSessions : 0;
+
+      // Group by zone
+      const byZone: Record<string, any> = {};
+      results.forEach(row => {
+        const zone = row.zone;
+        if (!byZone[zone]) {
+          byZone[zone] = { sessions: 0, totalDuration: 0 };
+        }
+        byZone[zone].sessions++;
+        byZone[zone].totalDuration += row._value || 0;
+      });
+
+      return {
+        period: {
+          start: params.startTime,
+          end: params.endTime,
+        },
+        totalSessions,
+        totalDurationSeconds: totalDuration,
+        averageDurationSeconds: Math.round(avgDuration),
+        byZone,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get usage statistics: ${error.message}`);
+      return {
+        totalSessions: 0,
+        totalDurationSeconds: 0,
+        byZone: {},
+      };
+    }
+  }
+
+  async getIrrigationHistory(params: {
+    zone?: string;
+    startTime: string;
+    endTime: string;
+  }): Promise<any[]> {
+    try {
+      let query = `
+        from(bucket: "sensor-data")
+          |> range(start: ${params.startTime}, stop: ${params.endTime})
+          |> filter(fn: (r) => r._measurement == "irrigation_sessions")
+          |> filter(fn: (r) => r._field == "duration_seconds" or r._field == "flow_rate_percent" or r._field == "status")
+      `;
+
+      if (params.zone) {
+        query += `\n  |> filter(fn: (r) => r.zone == "${params.zone}")`;
+      }
+
+      query += `\n  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")`;
+      query += `\n  |> sort(columns: ["_time"], desc: true)`;
+
+      const results = await this.influxDbService.query(query);
+
+      return results.map(row => ({
+        timestamp: row._time,
+        zone: row.zone,
+        reason: row.reason,
+        initiatedBy: row.initiated_by,
+        durationSeconds: row.duration_seconds,
+        flowRatePercent: row.flow_rate_percent,
+        status: row.status,
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to get irrigation history: ${error.message}`);
+      return [];
+    }
+  }
+
   private isZoneActive(zone: string): boolean {
     return this.activeSessions.has(zone);
   }
