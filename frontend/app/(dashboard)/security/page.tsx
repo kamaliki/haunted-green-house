@@ -1,23 +1,54 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { StatusIndicator, StatusBadge } from '@/components/ui/StatusIndicator';
+import { StatusBadge } from '@/components/ui/StatusIndicator';
 import { Button } from '@/components/ui/Button';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useAccessPointStatuses, useSecurityLogs, useZones } from '@/lib/hooks';
-import type { SecurityLogQuery, SecurityEvent } from '@/types';
+import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/Toast';
+import { 
+  useAccessPointStatuses, 
+  useSecurityLogs, 
+  useZones,
+  useAccessPoints,
+  useCreateAccessPoint,
+  useUpdateAccessPoint,
+  useDeleteAccessPoint,
+} from '@/lib/hooks';
+import { 
+  AccessPointList,
+  AccessPointForm,
+  AccessPointDeleteDialog,
+} from '@/components/security';
+import type { 
+  SecurityLogQuery, 
+  SecurityEvent, 
+  AccessPoint,
+  CreateAccessPointDto,
+  UpdateAccessPointDto,
+} from '@/types';
 import { cn } from '@/lib/utils/cn';
-import { CardListSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeletons';
-import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
+import { TableSkeleton } from '@/components/ui/LoadingSkeletons';
 
 export default function SecurityPage() {
   const router = useRouter();
+  const toast = useToast();
   
   // Fetch data
-  const { data: accessPoints, isLoading: loadingAccessPoints } = useAccessPointStatuses();
+  const { data: accessPointStatuses, isLoading: loadingAccessPoints } = useAccessPointStatuses();
+  const { data: accessPoints, isLoading: loadingAccessPointsConfig, error: accessPointsError } = useAccessPoints();
   const { data: zones } = useZones();
+  
+  // Access point management state
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedAccessPoint, setSelectedAccessPoint] = useState<AccessPoint | null>(null);
+  
+  // Mutations
+  const createMutation = useCreateAccessPoint();
+  const updateMutation = useUpdateAccessPoint();
+  const deleteMutation = useDeleteAccessPoint();
   
   // Filter state
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
@@ -81,16 +112,88 @@ export default function SecurityPage() {
     );
   }, [securityLogs]);
   
-  // Group access points by type
-  const doors = useMemo(() => 
-    accessPoints?.filter(ap => ap.type === 'door') || [], 
-    [accessPoints]
-  );
+  // Merge access point configuration with real-time status
+  const accessPointsWithStatus = useMemo(() => {
+    if (!accessPoints || !accessPointStatuses) return accessPoints || [];
+    
+    return accessPoints.map((ap) => {
+      const status = accessPointStatuses.find((s) => s.id === ap.id);
+      if (status) {
+        return {
+          ...ap,
+          status: status.status,
+          lastStatusChange: status.lastChanged,
+        };
+      }
+      return ap;
+    });
+  }, [accessPoints, accessPointStatuses]);
   
-  const windows = useMemo(() => 
-    accessPoints?.filter(ap => ap.type === 'window') || [], 
-    [accessPoints]
-  );
+  // Handlers for access point management
+  const handleAddAccessPoint = () => {
+    setSelectedAccessPoint(null);
+    setIsFormModalOpen(true);
+  };
+  
+  const handleEditAccessPoint = (accessPoint: AccessPoint) => {
+    setSelectedAccessPoint(accessPoint);
+    setIsFormModalOpen(true);
+  };
+  
+  const handleDeleteAccessPoint = (accessPoint: AccessPoint) => {
+    setSelectedAccessPoint(accessPoint);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleFormSubmit = async (data: CreateAccessPointDto | UpdateAccessPointDto) => {
+    try {
+      if (selectedAccessPoint) {
+        // Update existing access point
+        await updateMutation.mutateAsync({ 
+          id: selectedAccessPoint.id, 
+          data: data as UpdateAccessPointDto 
+        });
+        toast.success('Access Point Updated', 'The access point has been updated successfully.');
+      } else {
+        // Create new access point
+        await createMutation.mutateAsync(data as CreateAccessPointDto);
+        toast.success('Access Point Created', 'The access point has been created successfully.');
+      }
+      setIsFormModalOpen(false);
+      setSelectedAccessPoint(null);
+    } catch (error) {
+      toast.error(
+        'Operation Failed', 
+        error instanceof Error ? error.message : 'Failed to save access point.'
+      );
+    }
+  };
+  
+  const handleFormCancel = () => {
+    setIsFormModalOpen(false);
+    setSelectedAccessPoint(null);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!selectedAccessPoint) return;
+    
+    try {
+      await deleteMutation.mutateAsync(selectedAccessPoint.id);
+      toast.success('Access Point Deleted', 'The access point has been removed successfully.');
+      setIsDeleteDialogOpen(false);
+      setSelectedAccessPoint(null);
+    } catch (error) {
+      toast.error(
+        'Delete Failed', 
+        error instanceof Error ? error.message : 'Failed to delete access point.'
+      );
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setIsDeleteDialogOpen(false);
+    setSelectedAccessPoint(null);
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -148,54 +251,34 @@ export default function SecurityPage() {
         </Card>
       )}
 
-      {/* Access Point Status Grid */}
+      {/* Access Points Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>🚪</span>
-            Access Point Status
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <span className="animate-float">🚪</span>
+              Access Points
+            </CardTitle>
+            <Button
+              variant="primary"
+              onClick={handleAddAccessPoint}
+              className="flex items-center gap-2 hover:scale-105 transition-transform"
+            >
+              <span>➕</span>
+              <span className="hidden sm:inline">Add Access Point</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {loadingAccessPoints ? (
-            <CardListSkeleton count={4} />
-          ) : (
-            <div className="space-y-6">
-              {/* Doors */}
-              <div>
-                <h4 className="text-lg font-bold text-toxic-purple mb-3 font-vt323">
-                  Doors
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {doors.map((door) => (
-                    <AccessPointCard key={door.id} accessPoint={door} />
-                  ))}
-                </div>
-                {doors.length === 0 && (
-                  <p className="text-text-secondary text-center py-4">
-                    No doors configured
-                  </p>
-                )}
-              </div>
-
-              {/* Windows */}
-              <div>
-                <h4 className="text-lg font-bold text-toxic-purple mb-3 font-vt323">
-                  Windows
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {windows.map((window) => (
-                    <AccessPointCard key={window.id} accessPoint={window} />
-                  ))}
-                </div>
-                {windows.length === 0 && (
-                  <p className="text-text-secondary text-center py-4">
-                    No windows configured
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+          <AccessPointList
+            accessPoints={accessPointsWithStatus}
+            onEdit={handleEditAccessPoint}
+            onDelete={handleDeleteAccessPoint}
+            isLoading={loadingAccessPointsConfig || loadingAccessPoints}
+            error={accessPointsError}
+            highlightThreshold={300}
+          />
         </CardContent>
       </Card>
 
@@ -336,63 +419,52 @@ export default function SecurityPage() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-text-secondary font-vt323">
-                No security events found for the selected filters
+            <div className="text-center py-12 space-y-4 animate-fade-in">
+              <div className="text-5xl sm:text-6xl animate-float">👻</div>
+              <h3 className="text-lg sm:text-xl font-bold text-ghost-green font-vt323 text-glow">
+                No Security Events Found
+              </h3>
+              <p className="text-sm sm:text-base text-text-secondary font-vt323 px-4 max-w-md mx-auto">
+                {eventTypeFilter === 'all' && dateRangeFilter === 'today' && locationFilter === 'all' && zoneFilter === 'all'
+                  ? 'No security events have been recorded yet. Events will appear here when motion is detected or access points change status.'
+                  : 'No events match the selected filters. Try adjusting your filter criteria or clearing all filters.'}
               </p>
             </div>
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-// Access Point Card Component
-interface AccessPointCardProps {
-  accessPoint: {
-    id: string;
-    type: 'door' | 'window';
-    location: string;
-    zoneId?: string;
-    zoneName?: string;
-    status: 'open' | 'closed';
-    lastChanged: Date;
-  };
-}
+      {/* Access Point Form Modal */}
+      <Modal
+        isOpen={isFormModalOpen}
+        onClose={handleFormCancel}
+        title={selectedAccessPoint ? 'Edit Access Point' : 'Add Access Point'}
+        tombstone={true}
+      >
+        {(createMutation.isPending || updateMutation.isPending) ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-12 bg-ghost-green/20 rounded pixel-corners" />
+            <div className="h-12 bg-ghost-green/20 rounded pixel-corners" />
+            <div className="h-12 bg-ghost-green/20 rounded pixel-corners" />
+          </div>
+        ) : (
+          <AccessPointForm
+            accessPoint={selectedAccessPoint || undefined}
+            onSubmit={handleFormSubmit}
+            onCancel={handleFormCancel}
+            isLoading={createMutation.isPending || updateMutation.isPending}
+          />
+        )}
+      </Modal>
 
-function AccessPointCard({ accessPoint }: AccessPointCardProps) {
-  const isOpen = accessPoint.status === 'open';
-  
-  return (
-    <div
-      className={cn(
-        'p-4 border-4 rounded pixel-corners transition-all',
-        isOpen
-          ? 'border-blood-red bg-blood-red/10 shadow-glow-red'
-          : 'border-slime-green bg-slime-green/10 shadow-glow-green'
-      )}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1">
-          <p className="font-bold text-bone-white font-vt323">
-            {accessPoint.location}
-          </p>
-          {accessPoint.zoneName && (
-            <p className="text-sm text-text-secondary">
-              {accessPoint.zoneName}
-            </p>
-          )}
-        </div>
-        <StatusIndicator
-          status={isOpen ? 'danger' : 'success'}
-          label={isOpen ? 'OPEN' : 'CLOSED'}
-          size="md"
-        />
-      </div>
-      <p className="text-xs text-text-secondary">
-        Last changed: {accessPoint.lastChanged.toLocaleString()}
-      </p>
+      {/* Delete Confirmation Dialog */}
+      <AccessPointDeleteDialog
+        isOpen={isDeleteDialogOpen}
+        accessPoint={selectedAccessPoint}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

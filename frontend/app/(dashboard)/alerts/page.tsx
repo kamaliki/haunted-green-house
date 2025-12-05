@@ -15,7 +15,7 @@ import type { Alert } from '@/types';
  */
 export default function AlertsPage() {
   const { isLoading, acknowledgeAlert, acknowledgeAll, isAcknowledging } = useAlerts();
-  const { zones } = useZones();
+  const { data: zones = [] } = useZones();
   const {
     getSortedAlerts,
     filterZoneId,
@@ -30,8 +30,13 @@ export default function AlertsPage() {
 
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
-  const sortedAlerts = getSortedAlerts();
+  // Filter out acknowledged alerts and get sorted list
+  const sortedAlerts = getSortedAlerts().filter(alert => !alert.acknowledged);
   const hasFilters = filterZoneId || filterSeverity || filterType;
+
+  const handleAlertClick = (alert: Alert) => {
+    setSelectedAlert(alert);
+  };
 
   const handleAcknowledge = (alertId: string) => {
     acknowledgeAlert(alertId);
@@ -180,8 +185,8 @@ export default function AlertsPage() {
 
       {/* Alert List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Alert Cards */}
-        <div className="space-y-4">
+        {/* Alert Cards - Hide on mobile when alert is selected */}
+        <div className={`space-y-4 ${selectedAlert ? 'hidden lg:block' : ''}`}>
           {sortedAlerts.length === 0 ? (
             <Card className="bg-bg-dark border-ghost-green text-center py-12">
               <div className="text-6xl mb-4">👻</div>
@@ -200,7 +205,7 @@ export default function AlertsPage() {
                   ${alert.acknowledged ? 'opacity-60' : ''}
                   hover:scale-[1.02]
                 `}
-                onClick={() => setSelectedAlert(alert)}
+                onClick={() => handleAlertClick(alert)}
               >
                 <div className="flex items-start gap-3">
                   {/* Icon */}
@@ -246,9 +251,18 @@ export default function AlertsPage() {
         </div>
 
         {/* Alert Details */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
+        <div className={`lg:sticky lg:top-4 lg:self-start ${!selectedAlert ? 'hidden lg:block' : ''}`}>
           {selectedAlert ? (
             <Card className={`bg-bg-dark ${severityColors[selectedAlert.severity]}`}>
+              {/* Back button for mobile */}
+              <button
+                onClick={() => setSelectedAlert(null)}
+                className="lg:hidden mb-4 flex items-center gap-2 text-ghost-green hover:text-slime-green transition-colors"
+              >
+                <span>←</span>
+                <span>Back to Alerts</span>
+              </button>
+              
               <h2 className="text-2xl font-bold text-bone-white mb-4">
                 {severityIcons[selectedAlert.severity]} Alert Details
               </h2>

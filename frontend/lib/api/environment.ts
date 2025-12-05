@@ -80,23 +80,59 @@ export const getZoneEnvironmentData = async (zoneId: string): Promise<Environmen
 export const getHistoricalData = async (
   query: HistoricalDataQuery
 ): Promise<TimeSeriesData[]> => {
+  // Calculate start and end times based on timeRange if not provided
+  let startTime = query.startTime;
+  let endTime = query.endTime || new Date();
+  
+  if (!startTime && query.timeRange) {
+    const now = new Date();
+    const ranges: Record<string, number> = {
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    
+    const milliseconds = ranges[query.timeRange] || ranges['24h'];
+    startTime = new Date(now.getTime() - milliseconds);
+  }
+
   const params = {
     sensorType: query.metrics.join(','),
-    ...(query.startTime && { startTime: query.startTime.toISOString() }),
-    ...(query.endTime && { endTime: query.endTime.toISOString() }),
+    ...(startTime && { startTime: startTime.toISOString() }),
+    ...(endTime && { endTime: endTime.toISOString() }),
   };
 
-  const response = await apiClient.get<TimeSeriesData[]>('/api/environment/sensors/history', {
-    params,
+  // Backend returns flat array: [{ timestamp, deviceId, sensorType, value }, ...]
+  const response = await apiClient.get<Array<{
+    timestamp: string;
+    deviceId: string;
+    sensorType: string;
+    value: number;
+  }>>('/api/environment/sensors/history', { params });
+
+  // Group by sensorType and transform to TimeSeriesData format
+  const groupedData: Record<string, TimeSeriesData> = {};
+  
+  response.data.forEach((point) => {
+    if (!groupedData[point.sensorType]) {
+      groupedData[point.sensorType] = {
+        metric: point.sensorType,
+        data: [],
+      };
+    }
+    
+    groupedData[point.sensorType].data.push({
+      timestamp: new Date(point.timestamp),
+      value: point.value,
+    });
   });
 
-  // Convert timestamp strings to Date objects
-  return response.data.map((series) => ({
+  // Return as array and sort data points by timestamp
+  return Object.values(groupedData).map((series) => ({
     ...series,
-    data: series.data.map((point) => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-    })),
+    data: series.data.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
   }));
 };
 
@@ -107,24 +143,60 @@ export const getZoneHistoricalData = async (
   zoneId: string,
   query: HistoricalDataQuery
 ): Promise<TimeSeriesData[]> => {
+  // Calculate start and end times based on timeRange if not provided
+  let startTime = query.startTime;
+  let endTime = query.endTime || new Date();
+  
+  if (!startTime && query.timeRange) {
+    const now = new Date();
+    const ranges: Record<string, number> = {
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    
+    const milliseconds = ranges[query.timeRange] || ranges['24h'];
+    startTime = new Date(now.getTime() - milliseconds);
+  }
+
   const params = {
     deviceId: zoneId,
     sensorType: query.metrics.join(','),
-    ...(query.startTime && { startTime: query.startTime.toISOString() }),
-    ...(query.endTime && { endTime: query.endTime.toISOString() }),
+    ...(startTime && { startTime: startTime.toISOString() }),
+    ...(endTime && { endTime: endTime.toISOString() }),
   };
 
-  const response = await apiClient.get<TimeSeriesData[]>('/api/environment/sensors/history', {
-    params,
+  // Backend returns flat array: [{ timestamp, deviceId, sensorType, value }, ...]
+  const response = await apiClient.get<Array<{
+    timestamp: string;
+    deviceId: string;
+    sensorType: string;
+    value: number;
+  }>>('/api/environment/sensors/history', { params });
+
+  // Group by sensorType and transform to TimeSeriesData format
+  const groupedData: Record<string, TimeSeriesData> = {};
+  
+  response.data.forEach((point) => {
+    if (!groupedData[point.sensorType]) {
+      groupedData[point.sensorType] = {
+        metric: point.sensorType,
+        data: [],
+      };
+    }
+    
+    groupedData[point.sensorType].data.push({
+      timestamp: new Date(point.timestamp),
+      value: point.value,
+    });
   });
 
-  // Convert timestamp strings to Date objects
-  return response.data.map((series) => ({
+  // Return as array and sort data points by timestamp
+  return Object.values(groupedData).map((series) => ({
     ...series,
-    data: series.data.map((point) => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-    })),
+    data: series.data.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()),
   }));
 };
 

@@ -420,7 +420,7 @@ body {
   }
   
   .animate-flicker-intense {
-    animation: flicker-intense 0.3s ease-in-out infinite;
+    animation: flicker-intense 1s ease-in-out infinite;
   }
   
   .delay-100 {

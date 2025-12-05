@@ -34,7 +34,7 @@ const config: Config = {
         'fog': 'fog 8s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
         'flicker': 'flicker 0.5s ease-in-out infinite',
-        'flicker-intense': 'flicker-intense 0.3s ease-in-out infinite',
+        'flicker-intense': 'flicker-intense 3s ease-in-out infinite',
         'ghost-trail': 'ghost-trail 0.5s ease-out',
         'scanline': 'scanline 8s linear infinite',
         'spin-ghost': 'spin-ghost 2s ease-in-out infinite',

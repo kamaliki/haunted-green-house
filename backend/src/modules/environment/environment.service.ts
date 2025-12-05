@@ -32,6 +32,22 @@ export class EnvironmentService {
       notificationChannels: ['websocket', 'mqtt'],
     },
     {
+      sensorType: SensorType.HUMIDITY_SOIL,
+      minValue: 30,
+      maxValue: 70,
+      cooldownMinutes: 10,
+      severity: 'moderate',
+      notificationChannels: ['websocket', 'mqtt'],
+    },
+    {
+      sensorType: SensorType.LIGHT_INTENSITY,
+      minValue: 200,
+      maxValue: 1000,
+      cooldownMinutes: 15,
+      severity: 'moderate',
+      notificationChannels: ['websocket', 'mqtt'],
+    },
+    {
       sensorType: SensorType.CO2_LEVEL,
       maxValue: 1500,
       cooldownMinutes: 15,
@@ -312,7 +328,16 @@ export class EnvironmentService {
       `;
 
       if (params.sensorType) {
-        query += `\n  |> filter(fn: (r) => r.sensor_type == "${params.sensorType}")`;
+        // Handle comma-separated sensor types
+        const sensorTypes = params.sensorType.split(',').map(s => s.trim());
+        
+        if (sensorTypes.length === 1) {
+          query += `\n  |> filter(fn: (r) => r.sensor_type == "${sensorTypes[0]}")`;
+        } else {
+          // Build OR condition for multiple sensor types
+          const conditions = sensorTypes.map(type => `r.sensor_type == "${type}"`).join(' or ');
+          query += `\n  |> filter(fn: (r) => ${conditions})`;
+        }
       }
 
       if (params.deviceId) {
@@ -321,7 +346,9 @@ export class EnvironmentService {
 
       query += `\n  |> sort(columns: ["_time"])`;
 
+      this.logger.debug(`Executing InfluxDB query: ${query}`);
       const results = await this.influxDbService.query(query);
+      this.logger.debug(`Query returned ${results.length} results`);
 
       return results.map((row) => ({
         timestamp: row._time,
@@ -331,6 +358,7 @@ export class EnvironmentService {
       }));
     } catch (error) {
       this.logger.error(`Failed to get historical data: ${error.message}`);
+      this.logger.error(error.stack);
       return [];
     }
   }

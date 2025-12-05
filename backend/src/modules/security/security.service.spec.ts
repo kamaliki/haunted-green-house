@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { SecurityService } from './security.service';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
 import { AlertService } from '../alerts/alert.service';
+import { AccessPoint } from './entities/access-point.entity';
 import { MotionEvent, AccessPointStatus } from './interfaces/security.interface';
 import * as fc from 'fast-check';
 
@@ -9,6 +12,7 @@ describe('SecurityService', () => {
   let service: SecurityService;
   let influxDbService: InfluxDbService;
   let alertService: AlertService;
+  let accessPointRepository: Repository<AccessPoint>;
 
   const mockInfluxDbService = {
     getBucket: jest.fn().mockReturnValue('test-bucket'),
@@ -21,10 +25,22 @@ describe('SecurityService', () => {
     sendSecurityAlert: jest.fn(),
   };
 
+  const mockAccessPointRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SecurityService,
+        {
+          provide: getRepositoryToken(AccessPoint),
+          useValue: mockAccessPointRepository,
+        },
         {
           provide: InfluxDbService,
           useValue: mockInfluxDbService,
@@ -37,6 +53,9 @@ describe('SecurityService', () => {
     }).compile();
 
     service = module.get<SecurityService>(SecurityService);
+    accessPointRepository = module.get<Repository<AccessPoint>>(
+      getRepositoryToken(AccessPoint),
+    );
     influxDbService = module.get<InfluxDbService>(InfluxDbService);
     alertService = module.get<AlertService>(AlertService);
 
@@ -392,6 +411,251 @@ describe('SecurityService', () => {
     });
   });
 
+  describe('access point CRUD operations', () => {
+    describe('createAccessPoint', () => {
+      it('should create a new access point with valid data', async () => {
+        // Arrange
+        const createDto = {
+          name: 'Main Door',
+          type: 'door' as const,
+          location: 'Entrance',
+        };
+
+        const savedAccessPoint = {
+          id: 'uuid-123',
+          ...createDto,
+          status: 'closed' as const,
+          monitoringEnabled: true,
+          alertThreshold: 300,
+          lastStatusChange: expect.any(Date),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValue(null);
+        mockAccessPointRepository.create.mockReturnValue(savedAccessPoint);
+        mockAccessPointRepository.save.mockResolvedValue(savedAccessPoint);
+
+        // Act
+        const result = await service.createAccessPoint(createDto);
+
+        // Assert
+        expect(result).toEqual(savedAccessPoint);
+        expect(mockAccessPointRepository.findOne).toHaveBeenCalledWith({
+          where: {
+            name: createDto.name,
+            location: createDto.location,
+          },
+        });
+        expect(mockAccessPointRepository.save).toHaveBeenCalled();
+      });
+
+      it('should reject creation with missing required fields', async () => {
+        // Arrange
+        const invalidDto = {
+          name: '',
+          type: 'door' as const,
+          location: 'Entrance',
+        };
+
+        // Act & Assert
+        await expect(service.createAccessPoint(invalidDto)).rejects.toThrow(
+          'Name, type, and location are required fields',
+        );
+      });
+
+      it('should reject duplicate access point name in same location', async () => {
+        // Arrange
+        const createDto = {
+          name: 'Main Door',
+          type: 'door' as const,
+          location: 'Entrance',
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValue({
+          id: 'existing-id',
+          ...createDto,
+        });
+
+        // Act & Assert
+        await expect(service.createAccessPoint(createDto)).rejects.toThrow(
+          'Access point with name "Main Door" already exists at location "Entrance"',
+        );
+      });
+    });
+
+    describe('findAllAccessPoints', () => {
+      it('should return all access points ordered by type and name', async () => {
+        // Arrange
+        const mockAccessPoints = [
+          { id: '1', name: 'Door A', type: 'door', location: 'Front' },
+          { id: '2', name: 'Window A', type: 'window', location: 'Side' },
+        ];
+
+        mockAccessPointRepository.find.mockResolvedValue(mockAccessPoints);
+
+        // Act
+        const result = await service.findAllAccessPoints();
+
+        // Assert
+        expect(result).toEqual(mockAccessPoints);
+        expect(mockAccessPointRepository.find).toHaveBeenCalledWith({
+          order: {
+            type: 'ASC',
+            name: 'ASC',
+          },
+        });
+      });
+    });
+
+    describe('findAccessPointById', () => {
+      it('should return access point when found', async () => {
+        // Arrange
+        const mockAccessPoint = {
+          id: 'uuid-123',
+          name: 'Main Door',
+          type: 'door',
+          location: 'Entrance',
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValue(mockAccessPoint);
+
+        // Act
+        const result = await service.findAccessPointById('uuid-123');
+
+        // Assert
+        expect(result).toEqual(mockAccessPoint);
+        expect(mockAccessPointRepository.findOne).toHaveBeenCalledWith({
+          where: { id: 'uuid-123' },
+        });
+      });
+
+      it('should throw NotFoundException when access point not found', async () => {
+        // Arrange
+        mockAccessPointRepository.findOne.mockResolvedValue(null);
+
+        // Act & Assert
+        await expect(service.findAccessPointById('non-existent')).rejects.toThrow(
+          'Access point with ID "non-existent" not found',
+        );
+      });
+    });
+
+    describe('updateAccessPoint', () => {
+      it('should update access point with valid data', async () => {
+        // Arrange
+        const existingAccessPoint = {
+          id: 'uuid-123',
+          name: 'Main Door',
+          type: 'door' as const,
+          location: 'Entrance',
+          status: 'closed' as const,
+          monitoringEnabled: true,
+          alertThreshold: 300,
+        };
+
+        const updateDto = {
+          name: 'Updated Door',
+          alertThreshold: 600,
+        };
+
+        const updatedAccessPoint = {
+          ...existingAccessPoint,
+          ...updateDto,
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValueOnce(existingAccessPoint);
+        mockAccessPointRepository.findOne.mockResolvedValueOnce(null);
+        mockAccessPointRepository.save.mockResolvedValue(updatedAccessPoint);
+
+        // Act
+        const result = await service.updateAccessPoint('uuid-123', updateDto);
+
+        // Assert
+        expect(result.name).toBe('Updated Door');
+        expect(result.alertThreshold).toBe(600);
+        expect(mockAccessPointRepository.save).toHaveBeenCalled();
+      });
+
+      it('should update lastStatusChange when status changes', async () => {
+        // Arrange
+        const existingAccessPoint = {
+          id: 'uuid-123',
+          name: 'Main Door',
+          type: 'door' as const,
+          location: 'Entrance',
+          status: 'closed' as const,
+          monitoringEnabled: true,
+          alertThreshold: 300,
+        };
+
+        const updateDto = {
+          status: 'open' as const,
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValue(existingAccessPoint);
+        mockAccessPointRepository.save.mockResolvedValue({
+          ...existingAccessPoint,
+          ...updateDto,
+        });
+
+        // Act
+        await service.updateAccessPoint('uuid-123', updateDto);
+
+        // Assert
+        expect(mockAccessPointRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: 'open',
+            lastStatusChange: expect.any(Date),
+          }),
+        );
+      });
+
+      it('should throw NotFoundException when updating non-existent access point', async () => {
+        // Arrange
+        mockAccessPointRepository.findOne.mockResolvedValue(null);
+
+        // Act & Assert
+        await expect(
+          service.updateAccessPoint('non-existent', { name: 'New Name' }),
+        ).rejects.toThrow('Access point with ID "non-existent" not found');
+      });
+    });
+
+    describe('deleteAccessPoint', () => {
+      it('should delete an existing access point', async () => {
+        // Arrange
+        const existingAccessPoint = {
+          id: 'uuid-123',
+          name: 'Main Door',
+          type: 'door' as const,
+          location: 'Entrance',
+        };
+
+        mockAccessPointRepository.findOne.mockResolvedValue(existingAccessPoint);
+        mockAccessPointRepository.remove.mockResolvedValue(existingAccessPoint);
+
+        // Act
+        await service.deleteAccessPoint('uuid-123');
+
+        // Assert
+        expect(mockAccessPointRepository.remove).toHaveBeenCalledWith(
+          existingAccessPoint,
+        );
+      });
+
+      it('should throw NotFoundException when deleting non-existent access point', async () => {
+        // Arrange
+        mockAccessPointRepository.findOne.mockResolvedValue(null);
+
+        // Act & Assert
+        await expect(service.deleteAccessPoint('non-existent')).rejects.toThrow(
+          'Access point with ID "non-existent" not found',
+        );
+      });
+    });
+  });
+
   describe('Property-Based Tests', () => {
     // Feature: haunted-greenhouse, Property 33: Access point state monitoring
     // Validates: Requirements 16.1, 16.3
@@ -458,6 +722,10 @@ describe('SecurityService', () => {
             const module: TestingModule = await Test.createTestingModule({
               providers: [
                 SecurityService,
+                {
+                  provide: getRepositoryToken(AccessPoint),
+                  useValue: mockAccessPointRepository,
+                },
                 {
                   provide: InfluxDbService,
                   useValue: mockInfluxDbService,

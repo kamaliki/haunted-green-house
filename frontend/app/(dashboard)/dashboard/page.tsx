@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { GhostIcon, PumpkinIcon, BatIcon } from '@/components/ui/Icons';
 import { SensorCard, WeatherWidget } from '@/components/dashboard';
 import { useSensorData, useSensorUpdates, useWeatherData } from '@/lib/hooks';
@@ -12,6 +13,7 @@ import type { EnvironmentData, SensorThreshold } from '@/types';
  * Displays overview of greenhouse status with real-time sensor data
  */
 export default function DashboardPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   
   // Fetch current sensor data
@@ -262,14 +264,23 @@ export default function DashboardPage() {
           QUICK ACTIONS
         </h2>
         <div className="flex flex-wrap gap-4">
-          <button className="retro-button">
-            Start Irrigation
+          <button 
+            className="retro-button"
+            onClick={() => router.push('/')}
+          >
+            View Zones
           </button>
-          <button className="px-6 py-3 bg-bg-dark text-toxic-purple font-bold border-4 border-toxic-purple pixel-border-glow transition-all duration-200 hover:scale-105 hover:text-slime-green">
-            View Analytics
-          </button>
-          <button className="px-6 py-3 bg-bg-dark text-blood-red font-bold border-4 border-blood-red pixel-border-glow transition-all duration-200 hover:scale-105 hover:text-pumpkin-orange">
+          <button 
+            className="px-6 py-3 bg-bg-dark text-toxic-purple font-bold border-4 border-toxic-purple pixel-border-glow transition-all duration-200 hover:scale-105 hover:text-slime-green"
+            onClick={() => router.push('/alerts')}
+          >
             Check Alerts
+          </button>
+          <button 
+            className="px-6 py-3 bg-bg-dark text-pumpkin-orange font-bold border-4 border-pumpkin-orange pixel-border-glow transition-all duration-200 hover:scale-105 hover:text-ghost-green"
+            onClick={() => router.push('/security')}
+          >
+            Security Monitor
           </button>
         </div>
       </div>

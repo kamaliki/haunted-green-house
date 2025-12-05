@@ -7,9 +7,14 @@ import { CobwebIcon } from '@/components/ui/Icons';
  * Footer component with last update timestamp and system status
  */
 export function Footer() {
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Set initial time on client mount to avoid hydration mismatch
+    setMounted(true);
+    setLastUpdate(new Date());
+
     // Update timestamp every minute
     const interval = setInterval(() => {
       setLastUpdate(new Date());
@@ -45,7 +50,7 @@ export function Footer() {
             <div className="font-vt323 text-sm">
               <span className="text-text-secondary">Last Update: </span>
               <span className="text-bone-white">
-                {formatDate(lastUpdate)} {formatTime(lastUpdate)}
+                {mounted && lastUpdate ? `${formatDate(lastUpdate)} ${formatTime(lastUpdate)}` : '--:--:--'}
               </span>
             </div>
           </div>

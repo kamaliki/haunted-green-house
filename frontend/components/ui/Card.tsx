@@ -8,6 +8,7 @@ interface CardProps {
   fogOverlay?: boolean;
   glow?: boolean;
   cobweb?: boolean;
+  onClick?: () => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -17,9 +18,11 @@ export const Card: React.FC<CardProps> = ({
   fogOverlay = true,
   glow = true,
   cobweb = true,
+  onClick,
 }) => {
   return (
     <div
+      onClick={onClick}
       className={cn(
         'retro-card',
         floating && 'hover:animate-float transition-all duration-300',

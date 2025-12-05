@@ -1,16 +1,18 @@
 export interface Alert {
   id: string;
-  type: 'disease_detected' | 'temperature' | 'security' | 'irrigation' | 'predictive_threshold_breach';
-  severity: 'low' | 'moderate' | 'high' | 'critical';
+  type: 'environmental' | 'security' | 'predictive' | 'system';
+  severity: 'info' | 'warning' | 'critical';
   title: string;
   message: string;
   timestamp: Date;
   metadata?: Record<string, any>;
-  acknowledged?: boolean;
+  acknowledged: boolean;
+  zoneId?: string;
+  zoneName?: string;
 }
 
 export interface DiseaseAlert extends Alert {
-  type: 'disease_detected';
+  type: 'environmental';
   metadata: {
     plantId: string;
     analysisId: string;
@@ -22,7 +24,7 @@ export interface DiseaseAlert extends Alert {
 }
 
 export interface PredictiveAlert extends Alert {
-  type: 'predictive_threshold_breach';
+  type: 'predictive';
   metadata: {
     metric: string;
     predictedValue: number;

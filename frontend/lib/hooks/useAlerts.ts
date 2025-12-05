@@ -13,11 +13,12 @@ export function useAlerts() {
   // Fetch alerts
   const { data: alerts = [], isLoading, error, refetch } = useQuery({
     queryKey: ['alerts'],
-    queryFn: getAlerts,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    onSuccess: (data) => {
+    queryFn: async () => {
+      const data = await getAlerts();
       setAlerts(data);
+      return data;
     },
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Acknowledge single alert mutation
