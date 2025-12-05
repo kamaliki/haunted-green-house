@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PlantHealthService } from './plant-health.service';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
 import { ImageProcessingService } from './services/image-processing.service';
-import { AlertService } from '../../common/services/alerts/alert.service';
+import { AlertService } from '../alerts/alert.service';
 import { GrowthAnalysisService } from './services/growth-analysis.service';
 import { TreatmentRecommendationService } from './services/treatment-recommendation.service';
 import { NotFoundException } from '@nestjs/common';

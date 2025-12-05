@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
 import { ImageProcessingService } from './services/image-processing.service';
-import { AlertService } from '../../common/services/alerts/alert.service';
+import { AlertService } from '../alerts/alert.service';
 import { GrowthAnalysisService } from './services/growth-analysis.service';
 import { TreatmentRecommendationService } from './services/treatment-recommendation.service';
 import { AnalysisResult, UploadMetadata } from './interfaces/analysis.interface';

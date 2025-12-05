@@ -14,7 +14,7 @@ export interface Alert {
   deviceId: string;
   value: number;
   threshold: number;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: 'low' | 'moderate' | 'high' | 'critical';
   message: string;
   timestamp: Date;
   targetModule?: string;
@@ -26,6 +26,6 @@ export interface AlertThreshold {
   minValue?: number;
   maxValue?: number;
   cooldownMinutes: number;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: 'low' | 'moderate' | 'high' | 'critical';
   notificationChannels: ('email' | 'websocket' | 'mqtt')[];
 }

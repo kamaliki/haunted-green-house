@@ -6,7 +6,7 @@ import { GrowthAnalysisService } from './services/growth-analysis.service';
 import { TreatmentRecommendationService } from './services/treatment-recommendation.service';
 import { InfluxDbModule } from '../../common/services/influxdb/influxdb.module';
 import { MqttModule } from '../../common/services/mqtt/mqtt.module';
-import { AlertModule } from '../../common/services/alerts/alert.module';
+import { AlertModule } from '../alerts/alert.module';
 
 @Module({
   imports: [InfluxDbModule, MqttModule, AlertModule],

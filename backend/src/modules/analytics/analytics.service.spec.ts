@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalyticsService } from './analytics.service';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
-import { AlertService } from '../../common/services/alerts/alert.service';
+import { AlertService } from '../alerts/alert.service';
 import { PredictionEngine } from './services/prediction-engine.service';
 import { OptimizationEngine } from './services/optimization-engine.service';
 import { WeatherIntegrationService } from './services/weather-integration.service';

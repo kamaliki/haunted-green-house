@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SecurityService } from './security.service';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
-import { AlertService } from '../../common/services/alerts/alert.service';
+import { AlertService } from '../alerts/alert.service';
 import { MotionEvent, AccessPointStatus } from './interfaces/security.interface';
 import * as fc from 'fast-check';
 

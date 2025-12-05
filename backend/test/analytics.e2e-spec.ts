@@ -8,7 +8,7 @@ import { PredictionEngine } from '../src/modules/analytics/services/prediction-e
 import { OptimizationEngine } from '../src/modules/analytics/services/optimization-engine.service';
 import { WeatherIntegrationService } from '../src/modules/analytics/services/weather-integration.service';
 import { InfluxDbService } from '../src/common/services/influxdb/influxdb.service';
-import { AlertService } from '../src/common/services/alerts/alert.service';
+import { AlertService } from '../src/modules/alerts/alert.service';
 import {
   PredictionResult,
   OptimizationRecommendation,

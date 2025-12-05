@@ -59,6 +59,46 @@ export class AlertService {
     return alert;
   }
 
+  async createEnvironmentAlert(
+    alertType: string,
+    sensorType: string,
+    deviceId: string,
+    value: number,
+    threshold: number,
+    severity: 'low' | 'moderate' | 'high' | 'critical',
+    message: string,
+    targetModule?: string,
+  ): Promise<Alert> {
+    const alert: Alert = {
+      id: uuidv4(),
+      type: this.mapAlertType(alertType),
+      severity,
+      title: this.formatAlertTitle(alertType),
+      message,
+      timestamp: new Date(),
+      acknowledged: false,
+      metadata: {
+        alertType,
+        sensorType,
+        deviceId,
+        value,
+        threshold,
+        targetModule,
+      },
+    };
+
+    this.alerts.set(alert.id, alert);
+
+    // Send through configured channels
+    await this.sendThroughChannels(alert);
+
+    this.logger.log(
+      `Environment alert created: ${alertType} for device ${deviceId} (severity: ${severity})`,
+    );
+
+    return alert;
+  }
+
   async sendSecurityAlert(
     alertType: 'motion' | 'access_point',
     location: string,
@@ -90,6 +130,19 @@ export class AlertService {
     );
 
     return alert;
+  }
+
+  private mapAlertType(alertType: string): Alert['type'] {
+    if (alertType.includes('temperature')) return 'temperature';
+    if (alertType.includes('moisture') || alertType.includes('irrigation')) return 'irrigation';
+    return 'temperature'; // default
+  }
+
+  private formatAlertTitle(alertType: string): string {
+    return alertType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   async sendPredictiveAlert(

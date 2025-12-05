@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
 import { MqttClientService } from '../../common/services/mqtt/mqtt-client.service';
-import { SensorReading, Alert, AlertThreshold } from './interfaces/sensor-reading.interface';
+import { AlertService } from '../alerts/alert.service';
+import {
+  SensorReading,
+  Alert,
+  AlertThreshold,
+} from './interfaces/sensor-reading.interface';
 import { SensorType } from './dto/sensor-reading.dto';
 
 @Injectable()
@@ -23,7 +28,7 @@ export class EnvironmentService {
       minValue: 30,
       maxValue: 85,
       cooldownMinutes: 10,
-      severity: 'medium',
+      severity: 'moderate',
       notificationChannels: ['websocket', 'mqtt'],
     },
     {
@@ -46,7 +51,7 @@ export class EnvironmentService {
       minValue: 5.5,
       maxValue: 7.5,
       cooldownMinutes: 60,
-      severity: 'medium',
+      severity: 'moderate',
       notificationChannels: ['websocket', 'mqtt'],
     },
   ];
@@ -54,14 +59,19 @@ export class EnvironmentService {
   constructor(
     private influxDbService: InfluxDbService,
     private mqttClientService: MqttClientService,
+    private alertService: AlertService,
   ) {}
 
   async processSensorReading(reading: SensorReading): Promise<void> {
-    this.logger.log(`Processing sensor reading: ${reading.deviceId} - ${reading.sensorType}: ${reading.value}`);
+    this.logger.log(
+      `Processing sensor reading: ${reading.deviceId} - ${reading.sensorType}: ${reading.value}`,
+    );
 
     // Validate sensor reading
     if (!this.validateSensorReading(reading)) {
-      this.logger.warn(`Invalid sensor reading discarded: ${JSON.stringify(reading)}`);
+      this.logger.warn(
+        `Invalid sensor reading discarded: ${JSON.stringify(reading)}`,
+      );
       return;
     }
 
@@ -113,7 +123,9 @@ export class EnvironmentService {
   }
 
   private async checkAlerts(reading: SensorReading): Promise<void> {
-    const threshold = this.alertThresholds.find(t => t.sensorType === reading.sensorType);
+    const threshold = this.alertThresholds.find(
+      (t) => t.sensorType === reading.sensorType,
+    );
     if (!threshold) {
       return;
     }
@@ -121,10 +133,16 @@ export class EnvironmentService {
     let alertType: string | null = null;
     let thresholdValue: number | null = null;
 
-    if (threshold.maxValue !== undefined && reading.value > threshold.maxValue) {
+    if (
+      threshold.maxValue !== undefined &&
+      reading.value > threshold.maxValue
+    ) {
       alertType = `high_${reading.sensorType}`;
       thresholdValue = threshold.maxValue;
-    } else if (threshold.minValue !== undefined && reading.value < threshold.minValue) {
+    } else if (
+      threshold.minValue !== undefined &&
+      reading.value < threshold.minValue
+    ) {
       alertType = `low_${reading.sensorType}`;
       thresholdValue = threshold.minValue;
     }
@@ -136,7 +154,8 @@ export class EnvironmentService {
       const now = new Date();
 
       if (lastAlertTime) {
-        const minutesSinceLastAlert = (now.getTime() - lastAlertTime.getTime()) / (1000 * 60);
+        const minutesSinceLastAlert =
+          (now.getTime() - lastAlertTime.getTime()) / (1000 * 60);
         if (minutesSinceLastAlert < threshold.cooldownMinutes) {
           this.logger.debug(`Alert ${alertType} in cooldown period`);
           return;
@@ -151,16 +170,25 @@ export class EnvironmentService {
         value: reading.value,
         threshold: thresholdValue,
         severity: threshold.severity,
-        message: this.generateAlertMessage(alertType, reading.value, thresholdValue),
+        message: this.generateAlertMessage(
+          alertType,
+          reading.value,
+          thresholdValue,
+        ),
         timestamp: now,
-        targetModule: alertType === 'low_soil_moisture' ? 'irrigation' : undefined,
+        targetModule:
+          alertType === 'low_soil_moisture' ? 'irrigation' : undefined,
       });
 
       this.lastAlertTimes.set(alertKey, now);
     }
   }
 
-  private generateAlertMessage(alertType: string, value: number, threshold: number): string {
+  private generateAlertMessage(
+    alertType: string,
+    value: number,
+    threshold: number,
+  ): string {
     const messages: Record<string, string> = {
       high_temperature_air: `Air temperature ${value}°C exceeds safe limit of ${threshold}°C`,
       low_temperature_air: `Air temperature ${value}°C below safe limit of ${threshold}°C`,
@@ -169,18 +197,38 @@ export class EnvironmentService {
       high_co2_level: `CO2 level ${value} ppm exceeds safe limit of ${threshold} ppm`,
     };
 
-    return messages[alertType] || `Alert: ${alertType} - value: ${value}, threshold: ${threshold}`;
+    return (
+      messages[alertType] ||
+      `Alert: ${alertType} - value: ${value}, threshold: ${threshold}`
+    );
   }
 
   private async triggerAlert(alert: Alert): Promise<void> {
     this.logger.warn(`ALERT: ${alert.alertType} - ${alert.message}`);
 
+    // Save alert to AlertService (will be persisted to database)
+    const savedAlert = await this.alertService.createEnvironmentAlert(
+      alert.alertType,
+      alert.sensorType,
+      alert.deviceId,
+      alert.value,
+      alert.threshold,
+      alert.severity,
+      alert.message,
+      alert.targetModule,
+    );
+
     // Publish to MQTT
     const topic = `greenhouse/alerts/${alert.alertType}`;
-    await this.mqttClientService.publish(topic, JSON.stringify(alert));
+    await this.mqttClientService.publish(
+      topic,
+      JSON.stringify({
+        ...alert,
+        id: savedAlert.id, // Include the database ID
+      }),
+    );
 
-    // TODO: Send email notification
-    // TODO: Broadcast via WebSocket
+    this.logger.log(`Alert ${savedAlert.id} saved and published to MQTT`);
   }
 
   async getLatestReadings(): Promise<Record<string, any>> {
@@ -274,8 +322,8 @@ export class EnvironmentService {
       query += `\n  |> sort(columns: ["_time"])`;
 
       const results = await this.influxDbService.query(query);
-      
-      return results.map(row => ({
+
+      return results.map((row) => ({
         timestamp: row._time,
         deviceId: row.device_id,
         sensorType: row.sensor_type,

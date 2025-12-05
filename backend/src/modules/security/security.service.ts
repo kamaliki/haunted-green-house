@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
-import { AlertService } from '../../common/services/alerts/alert.service';
+import { AlertService } from '../alerts/alert.service';
 import {
   MotionEvent,
   AccessPointStatus,
