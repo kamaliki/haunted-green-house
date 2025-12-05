@@ -1,4 +1,4 @@
----
+x---
 title: EnvironmentModule - Sensor Data Collection & Monitoring
 status: ready-for-implementation
 created: 2025-11-24

@@ -122,10 +122,10 @@ export class EnvironmentService {
     let thresholdValue: number | null = null;
 
     if (threshold.maxValue !== undefined && reading.value > threshold.maxValue) {
-      alertType = `${reading.sensorType}_high`;
+      alertType = `high_${reading.sensorType}`;
       thresholdValue = threshold.maxValue;
     } else if (threshold.minValue !== undefined && reading.value < threshold.minValue) {
-      alertType = `${reading.sensorType}_low`;
+      alertType = `low_${reading.sensorType}`;
       thresholdValue = threshold.minValue;
     }
 
@@ -153,7 +153,7 @@ export class EnvironmentService {
         severity: threshold.severity,
         message: this.generateAlertMessage(alertType, reading.value, thresholdValue),
         timestamp: now,
-        targetModule: alertType.includes('soil_moisture_low') ? 'irrigation' : undefined,
+        targetModule: alertType === 'low_soil_moisture' ? 'irrigation' : undefined,
       });
 
       this.lastAlertTimes.set(alertKey, now);
@@ -162,11 +162,11 @@ export class EnvironmentService {
 
   private generateAlertMessage(alertType: string, value: number, threshold: number): string {
     const messages: Record<string, string> = {
-      temperature_air_high: `Air temperature ${value}°C exceeds safe limit of ${threshold}°C`,
-      temperature_air_low: `Air temperature ${value}°C below safe limit of ${threshold}°C`,
-      soil_moisture_low: `Soil moisture ${value}% below threshold of ${threshold}% - irrigation recommended`,
-      humidity_air_high: `Air humidity ${value}% exceeds recommended limit of ${threshold}%`,
-      co2_level_high: `CO2 level ${value} ppm exceeds safe limit of ${threshold} ppm`,
+      high_temperature_air: `Air temperature ${value}°C exceeds safe limit of ${threshold}°C`,
+      low_temperature_air: `Air temperature ${value}°C below safe limit of ${threshold}°C`,
+      low_soil_moisture: `Soil moisture ${value}% below threshold of ${threshold}% - irrigation recommended`,
+      high_humidity_air: `Air humidity ${value}% exceeds recommended limit of ${threshold}%`,
+      high_co2_level: `CO2 level ${value} ppm exceeds safe limit of ${threshold} ppm`,
     };
 
     return messages[alertType] || `Alert: ${alertType} - value: ${value}, threshold: ${threshold}`;

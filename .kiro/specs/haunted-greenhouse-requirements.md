@@ -110,27 +110,55 @@ A smart greenhouse with real-time IoT monitoring, AI-based alerts, image analysi
 - [ ] As a greenhouse operator, I want to view historical environmental data to identify trends
 
 ### Epic 2: Irrigation Control
-- [ ] As a greenhouse operator, I want to automatically start irrigation when soil moisture is low
+- [x] As a greenhouse operator, I want to automatically start irrigation when soil moisture is low
+
 - [ ] As a greenhouse operator, I want to monitor water reservoir levels to prevent running dry
 - [ ] As a greenhouse operator, I want to adjust water flow rates based on plant needs
 - [ ] As a greenhouse operator, I want to track water usage over time
 
 ### Epic 3: Plant Health Monitoring
-- [ ] As a greenhouse operator, I want to upload plant images for disease detection
-- [ ] As a greenhouse operator, I want to receive alerts when diseases are detected
-- [ ] As a greenhouse operator, I want to track plant growth over time
-- [ ] As a greenhouse operator, I want recommendations for treating detected issues
+- [x] As a greenhouse operator, I want to upload plant images for disease detection
+
+
+
+- [x] As a greenhouse operator, I want to receive alerts when diseases are detected
+
+
+
+- [x] As a greenhouse operator, I want to track plant growth over time
+
+
+
+- [x] As a greenhouse operator, I want recommendations for treating detected issues
+
+
+
 
 ### Epic 4: Analytics & Optimization
-- [ ] As a greenhouse operator, I want predictive insights on environmental trends
+- [x] As a greenhouse operator, I want predictive insights on environmental trends
+
+
+
+
+
+
 - [ ] As a greenhouse operator, I want optimization recommendations to improve yield
 - [ ] As a greenhouse operator, I want to integrate external weather data for better predictions
 - [ ] As a greenhouse operator, I want customizable alert thresholds
 
 ### Epic 5: Security
-- [ ] As a greenhouse operator, I want to be notified of unauthorized access
-- [ ] As a greenhouse operator, I want to monitor door and window status remotely
-- [ ] As a greenhouse operator, I want motion detection alerts during off-hours
+- [x] As a greenhouse operator, I want to be notified of unauthorized access
+
+
+
+- [x] As a greenhouse operator, I want to monitor door and window status remotely
+
+
+
+- [x] As a greenhouse operator, I want motion detection alerts during off-hours
+
+
+
 
 ## Acceptance Criteria
 
