@@ -1,6 +1,7 @@
 export * from './useSensorData';
 export * from './useIrrigationStatus';
 export * from './useSecurityEvents';
+export * from './useAccessPoints';
 export * from './useRealtime';
 export * from './useAuth';
 export * from './useWeatherData';

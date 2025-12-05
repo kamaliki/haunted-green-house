@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { InfluxDbService } from '../../common/services/influxdb/influxdb.service';
 import { AlertService } from '../alerts/alert.service';
 import {
@@ -8,6 +10,9 @@ import {
   OffHoursConfig,
   SecurityAlert,
 } from './interfaces/security.interface';
+import { AccessPoint } from './entities/access-point.entity';
+import { CreateAccessPointDto } from './dto/create-access-point.dto';
+import { UpdateAccessPointDto } from './dto/update-access-point.dto';
 
 @Injectable()
 export class SecurityService {
@@ -20,9 +25,131 @@ export class SecurityService {
   };
 
   constructor(
+    @InjectRepository(AccessPoint)
+    private readonly accessPointRepository: Repository<AccessPoint>,
     private readonly influxDbService: InfluxDbService,
     private readonly alertService: AlertService,
   ) {}
+
+  /**
+   * Create a new access point
+   */
+  async createAccessPoint(createDto: CreateAccessPointDto): Promise<AccessPoint> {
+    // Validate required fields
+    if (!createDto.name || !createDto.type || !createDto.location) {
+      throw new BadRequestException('Name, type, and location are required fields');
+    }
+
+    // Check for duplicate name in the same location
+    const existing = await this.accessPointRepository.findOne({
+      where: {
+        name: createDto.name,
+        location: createDto.location,
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        `Access point with name "${createDto.name}" already exists at location "${createDto.location}"`,
+      );
+    }
+
+    const accessPoint = this.accessPointRepository.create({
+      ...createDto,
+      status: createDto.status || 'closed',
+      monitoringEnabled: createDto.monitoringEnabled ?? true,
+      alertThreshold: createDto.alertThreshold ?? 300,
+      lastStatusChange: new Date(),
+    });
+
+    const saved = await this.accessPointRepository.save(accessPoint);
+    this.logger.log(`Created access point: ${saved.name} (${saved.id})`);
+    
+    return saved;
+  }
+
+  /**
+   * Get all access points
+   */
+  async findAllAccessPoints(): Promise<AccessPoint[]> {
+    return this.accessPointRepository.find({
+      order: {
+        type: 'ASC',
+        name: 'ASC',
+      },
+    });
+  }
+
+  /**
+   * Get a single access point by ID
+   */
+  async findAccessPointById(id: string): Promise<AccessPoint> {
+    const accessPoint = await this.accessPointRepository.findOne({
+      where: { id },
+    });
+
+    if (!accessPoint) {
+      throw new NotFoundException(`Access point with ID "${id}" not found`);
+    }
+
+    return accessPoint;
+  }
+
+  /**
+   * Update an access point
+   */
+  async updateAccessPoint(
+    id: string,
+    updateDto: UpdateAccessPointDto,
+  ): Promise<AccessPoint> {
+    const accessPoint = await this.findAccessPointById(id);
+
+    // If name or location is being changed, check for duplicates
+    if (
+      (updateDto.name && updateDto.name !== accessPoint.name) ||
+      (updateDto.location && updateDto.location !== accessPoint.location)
+    ) {
+      const newName = updateDto.name || accessPoint.name;
+      const newLocation = updateDto.location || accessPoint.location;
+
+      const existing = await this.accessPointRepository.findOne({
+        where: {
+          name: newName,
+          location: newLocation,
+        },
+      });
+
+      if (existing && existing.id !== id) {
+        throw new BadRequestException(
+          `Access point with name "${newName}" already exists at location "${newLocation}"`,
+        );
+      }
+    }
+
+    // Update status change timestamp if status is being changed
+    if (updateDto.status && updateDto.status !== accessPoint.status) {
+      updateDto['lastStatusChange'] = new Date();
+    }
+
+    Object.assign(accessPoint, updateDto);
+    const updated = await this.accessPointRepository.save(accessPoint);
+    
+    this.logger.log(`Updated access point: ${updated.name} (${updated.id})`);
+    return updated;
+  }
+
+  /**
+   * Delete an access point
+   */
+  async deleteAccessPoint(id: string): Promise<void> {
+    const accessPoint = await this.findAccessPointById(id);
+    await this.accessPointRepository.remove(accessPoint);
+    
+    // Remove from in-memory state if present
+    this.accessPointStates.delete(id);
+    
+    this.logger.log(`Deleted access point: ${accessPoint.name} (${id})`);
+  }
 
   /**
    * Handle motion detection event
@@ -148,12 +275,24 @@ export class SecurityService {
 
       const events: SecurityEvent[] = [];
       for (const row of results) {
+        const timestamp = new Date(row._time as string);
+        const details = JSON.parse((row.details as string) || '{}');
+        const eventType = row.type as SecurityEvent['type'];
+        
+        // Check if this is an off-hours event
+        const isOffHours = eventType === 'motion_detected' 
+          ? !this.shouldTriggerMotionAlert(timestamp)
+          : false;
+        
         events.push({
           id: row.id as string,
-          type: row.type as SecurityEvent['type'],
-          timestamp: new Date(row._time as string),
+          type: eventType,
+          timestamp,
           location: row.location as string,
-          details: JSON.parse((row.details as string) || '{}'),
+          details,
+          // Extract confidence for motion events
+          confidence: details.confidence,
+          isOffHours,
         });
       }
 

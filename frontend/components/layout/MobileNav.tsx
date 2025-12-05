@@ -1,13 +1,9 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  GhostIcon, 
-  SkullIcon, 
-  BatIcon, 
-  EyeIcon 
-} from '@/components/ui/Icons';
+import { SkullIcon, BatIcon } from '@/components/ui/Icons';
 
 /**
  * Mobile bottom navigation bar
@@ -15,28 +11,27 @@ import {
  */
 export function MobileNav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const navItems = [
     {
       href: '/dashboard',
-      label: 'Zones',
-      icon: <GhostIcon size="sm" />,
+      label: 'Dashboard',
+      icon: <span className="text-lg">📊</span>,
     },
     {
-      href: '/dashboard/security',
-      label: 'Security',
-      icon: <SkullIcon size="sm" />,
+      href: '/irrigation',
+      label: 'Irrigation',
+      icon: <span className="text-lg">💧</span>,
     },
     {
-      href: '/dashboard/alerts',
+      href: '/alerts',
       label: 'Alerts',
       icon: <BatIcon size="sm" />,
     },
     {
-      href: '/dashboard/analytics',
-      label: 'Analytics',
-      icon: <EyeIcon size="sm" />,
+      href: '/security',
+      label: 'Security',
+      icon: <SkullIcon size="sm" />,
     },
   ];
 
@@ -52,33 +47,30 @@ export function MobileNav() {
       <div className="flex items-center justify-around px-2 py-3">
         {navItems.map((item) => {
           const active = isActive(item.href);
-          
+
           return (
-            <button
+            <Link
               key={item.href}
-              onClick={() => router.push(item.href)}
+              href={item.href}
+              prefetch={true}
               className={`
                 relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg
-                transition-all duration-200 touch-manipulation
-                ${
-                  active
-                    ? 'text-ghost-green'
-                    : 'text-text-secondary'
-                }
+                transition-all duration-200 touch-manipulation no-select
+                ${active ? 'text-ghost-green' : 'text-text-secondary hover:text-ghost-green'}
               `}
             >
               {/* Icon */}
-              <span className={`
+              <span
+                className={`
                 transition-transform duration-200
                 ${active ? 'scale-110' : ''}
-              `}>
+              `}
+              >
                 {item.icon}
               </span>
 
               {/* Label */}
-              <span className="text-xs font-vt323">
-                {item.label}
-              </span>
+              <span className="text-xs font-vt323">{item.label}</span>
 
               {/* Active indicator */}
               {active && (
@@ -92,7 +84,7 @@ export function MobileNav() {
                   }}
                 />
               )}
-            </button>
+            </Link>
           );
         })}
       </div>

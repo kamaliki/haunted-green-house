@@ -31,8 +31,8 @@ export class AlertService {
   ): Promise<DiseaseAlert> {
     const alert: DiseaseAlert = {
       id: uuidv4(),
-      type: 'disease_detected',
-      severity: disease.severity,
+      type: 'environmental',
+      severity: this.mapSeverity(disease.severity),
       title: `Disease Detected: ${disease.name}`,
       message: `Plant ${plantId} has been diagnosed with ${disease.name} (${Math.round(disease.confidence * 100)}% confidence). ${disease.description}`,
       timestamp: new Date(),
@@ -71,12 +71,13 @@ export class AlertService {
   ): Promise<Alert> {
     const alert: Alert = {
       id: uuidv4(),
-      type: this.mapAlertType(alertType),
-      severity,
+      type: 'environmental',
+      severity: this.mapSeverity(severity),
       title: this.formatAlertTitle(alertType),
       message,
       timestamp: new Date(),
       acknowledged: false,
+      zoneId: deviceId,
       metadata: {
         alertType,
         sensorType,
@@ -108,7 +109,7 @@ export class AlertService {
     const alert: Alert = {
       id: uuidv4(),
       type: 'security',
-      severity: 'high',
+      severity: 'warning',
       title: `Security Alert: ${alertType === 'motion' ? 'Motion Detected' : 'Access Point Change'}`,
       message: details,
       timestamp: new Date(),
@@ -132,10 +133,10 @@ export class AlertService {
     return alert;
   }
 
-  private mapAlertType(alertType: string): Alert['type'] {
-    if (alertType.includes('temperature')) return 'temperature';
-    if (alertType.includes('moisture') || alertType.includes('irrigation')) return 'irrigation';
-    return 'temperature'; // default
+  private mapSeverity(severity: 'low' | 'moderate' | 'high' | 'critical'): 'info' | 'warning' | 'critical' {
+    if (severity === 'low') return 'info';
+    if (severity === 'moderate' || severity === 'high') return 'warning';
+    return 'critical';
   }
 
   private formatAlertTitle(alertType: string): string {
@@ -168,8 +169,8 @@ export class AlertService {
 
     const alert: PredictiveAlert = {
       id: uuidv4(),
-      type: 'predictive_threshold_breach',
-      severity,
+      type: 'predictive',
+      severity: this.mapSeverity(severity),
       title: `Predicted Threshold Breach: ${metric}`,
       message: `The system predicts that ${metric} will reach ${predictedValue.toFixed(2)} at ${predictedTime.toISOString()}, exceeding the threshold of ${threshold}. ${currentValue !== undefined ? `Current value: ${currentValue.toFixed(2)}.` : ''} Take proactive action to prevent this condition.`,
       timestamp: new Date(),

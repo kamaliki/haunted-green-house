@@ -152,6 +152,38 @@ export interface SecurityLogQuery {
   zoneId?: string;
 }
 
+// Access Point (Configuration)
+export interface AccessPoint {
+  id: string;
+  name: string;
+  type: 'door' | 'window';
+  location: string;
+  status: 'open' | 'closed' | 'locked' | 'unlocked';
+  monitoringEnabled: boolean;
+  alertThreshold: number; // seconds
+  lastStatusChange: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateAccessPointDto {
+  name: string;
+  type: 'door' | 'window';
+  location: string;
+  status?: 'open' | 'closed' | 'locked' | 'unlocked';
+  monitoringEnabled?: boolean;
+  alertThreshold?: number;
+}
+
+export interface UpdateAccessPointDto {
+  name?: string;
+  type?: 'door' | 'window';
+  location?: string;
+  status?: 'open' | 'closed' | 'locked' | 'unlocked';
+  monitoringEnabled?: boolean;
+  alertThreshold?: number;
+}
+
 // Access Point Status
 export interface AccessPointStatus {
   id: string;

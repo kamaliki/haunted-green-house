@@ -1,9 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionStatus } from '@/components/ui/ConnectionStatus';
 import { GhostIcon, SkullIcon } from '@/components/ui/Icons';
+import { useAlertStore } from '@/lib/store/alertStore';
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -13,8 +28,20 @@ interface NavbarProps {
  * Top navigation bar with user info, notifications, and connection status
  */
 export function Navbar({ onMenuToggle }: NavbarProps) {
+  const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationCount] = useState(3); // TODO: Connect to alert store
+  const { unreadCount, getSortedAlerts } = useAlertStore();
+  
+  // Get recent unacknowledged alerts (max 5)
+  const recentAlerts = getSortedAlerts()
+    .filter(alert => !alert.acknowledged)
+    .slice(0, 5);
+
+  const severityIcons = {
+    critical: '💀',
+    warning: '⚠️',
+    info: 'ℹ️',
+  };
 
   return (
     <nav className="bg-bg-dark border-b-4 border-ghost-green shadow-glow-green relative z-40">
@@ -81,13 +108,13 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
                 </svg>
                 
                 {/* Notification badge */}
-                {notificationCount > 0 && (
+                {unreadCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="absolute -top-1 -right-1 bg-blood-red text-bone-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-glow-red animate-pulse-glow"
                   >
-                    {notificationCount}
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </motion.span>
                 )}
               </button>
@@ -108,49 +135,46 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
                       </h3>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
-                      {/* Sample notifications - TODO: Connect to alert store */}
-                      <div className="p-4 border-b border-bg-medium hover:bg-bg-medium transition-colors cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <SkullIcon size="sm" />
-                          <div className="flex-1">
-                            <p className="text-sm text-bone-white font-vt323">
-                              Temperature threshold exceeded
-                            </p>
-                            <p className="text-xs text-text-secondary mt-1">
-                              2 minutes ago
-                            </p>
-                          </div>
+                      {recentAlerts.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <GhostIcon size="lg" />
+                          <p className="text-sm text-text-secondary font-vt323 mt-2">
+                            No new alerts
+                          </p>
                         </div>
-                      </div>
-                      <div className="p-4 border-b border-bg-medium hover:bg-bg-medium transition-colors cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <GhostIcon size="sm" />
-                          <div className="flex-1">
-                            <p className="text-sm text-bone-white font-vt323">
-                              Motion detected in greenhouse
-                            </p>
-                            <p className="text-xs text-text-secondary mt-1">
-                              15 minutes ago
-                            </p>
+                      ) : (
+                        recentAlerts.map((alert) => (
+                          <div
+                            key={alert.id}
+                            onClick={() => {
+                              setShowNotifications(false);
+                              router.push('/alerts');
+                            }}
+                            className="p-4 border-b border-bg-medium hover:bg-bg-medium transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-lg">{severityIcons[alert.severity]}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-bone-white font-vt323 truncate">
+                                  {alert.title}
+                                </p>
+                                <p className="text-xs text-text-secondary mt-1">
+                                  {formatTimeAgo(new Date(alert.timestamp))}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                      <div className="p-4 hover:bg-bg-medium transition-colors cursor-pointer">
-                        <div className="flex items-start gap-3">
-                          <span className="text-sm">💧</span>
-                          <div className="flex-1">
-                            <p className="text-sm text-bone-white font-vt323">
-                              Irrigation cycle completed
-                            </p>
-                            <p className="text-xs text-text-secondary mt-1">
-                              1 hour ago
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                        ))
+                      )}
                     </div>
                     <div className="p-3 border-t-2 border-toxic-purple text-center">
-                      <button className="text-xs text-ghost-green hover:text-slime-green font-vt323 transition-colors">
+                      <button
+                        onClick={() => {
+                          setShowNotifications(false);
+                          router.push('/alerts');
+                        }}
+                        className="text-xs text-ghost-green hover:text-slime-green font-vt323 transition-colors"
+                      >
                         View All Alerts →
                       </button>
                     </div>

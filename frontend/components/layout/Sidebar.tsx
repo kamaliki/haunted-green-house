@@ -28,37 +28,27 @@ const navItems: NavItem[] = [
   {
     href: '/dashboard',
     label: 'Dashboard',
-    icon: <GhostIcon size="md" />,
+    icon: <span className="text-xl">📊</span>,
   },
   {
-    href: '/dashboard/environment',
+    href: '/environment',
     label: 'Environment',
     icon: <span className="text-xl">🌡️</span>,
   },
   {
-    href: '/dashboard/irrigation',
+    href: '/irrigation',
     label: 'Irrigation',
     icon: <span className="text-xl">💧</span>,
   },
   {
-    href: '/dashboard/plant-health',
-    label: 'Plant Health',
-    icon: <span className="text-xl">🌱</span>,
-  },
-  {
-    href: '/dashboard/analytics',
-    label: 'Analytics',
-    icon: <EyeIcon size="md" />,
-  },
-  {
-    href: '/dashboard/security',
-    label: 'Security',
-    icon: <SkullIcon size="md" />,
-  },
-  {
-    href: '/dashboard/alerts',
+    href: '/alerts',
     label: 'Alerts',
     icon: <BatIcon size="md" />,
+  },
+  {
+    href: '/security',
+    label: 'Security',
+    icon: <SkullIcon size="md" />,
   },
 ];
 
@@ -71,7 +61,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
-      return pathname === '/dashboard';
+      return pathname === '/dashboard' || pathname === '/';
     }
     return pathname?.startsWith(href);
   };
@@ -92,17 +82,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{
-          x: isOpen ? 0 : '-100%',
-        }}
-        transition={{
-          type: 'spring',
-          stiffness: 300,
-          damping: 30,
-        }}
-        className="fixed left-0 top-0 h-full w-64 sm:w-72 md:w-80 lg:w-64 bg-bg-dark border-r-4 border-ghost-green shadow-glow-green z-50 lg:translate-x-0 lg:static overflow-y-auto"
+      <aside
+        className={`fixed left-0 top-0 h-screen w-64 sm:w-72 md:w-80 lg:w-64 bg-bg-dark border-r-4 border-ghost-green shadow-glow-green z-50 lg:sticky lg:top-0 overflow-y-auto lg:translate-x-0 transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         {/* Sidebar header */}
         <div className="p-4 border-b-2 border-ghost-green relative">
@@ -156,10 +139,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={(e) => {
+                  // Only close sidebar on mobile (when it's in overlay mode)
+                  if (onClose) {
+                    onClose();
+                  }
+                }}
                 className={`
                   group relative flex items-center gap-3 px-4 py-3 rounded-lg
-                  transition-all duration-200 font-vt323 text-lg
+                  transition-all duration-200 font-vt323 text-lg touch-manipulation
+                  active:scale-95 cursor-pointer
                   ${
                     active
                       ? 'bg-gradient-to-r from-toxic-purple/30 to-ghost-green/20 border-2 border-ghost-green text-ghost-green shadow-glow-green'
@@ -213,7 +202,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             v1.0.0 - Spooky Edition
           </p>
         </div>
-      </motion.aside>
+      </aside>
     </>
   );
 }

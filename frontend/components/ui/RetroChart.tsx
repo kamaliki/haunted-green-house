@@ -51,7 +51,16 @@ export const RetroChart: React.FC<RetroChartProps> = ({
     const timestampMap = new Map<number, any>();
 
     data.forEach((series) => {
+      // Add null safety check for series.data
+      if (!series || !series.data || !Array.isArray(series.data)) {
+        return;
+      }
+      
       series.data.forEach((point) => {
+        if (!point || !point.timestamp) {
+          return;
+        }
+        
         const timestamp = point.timestamp.getTime();
         if (!timestampMap.has(timestamp)) {
           timestampMap.set(timestamp, {

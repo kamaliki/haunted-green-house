@@ -19,6 +19,10 @@ export interface SecurityEvent {
   timestamp: Date;
   location: string;
   details: Record<string, any>;
+  confidence?: number; // For motion events
+  isOffHours?: boolean; // Flag for off-hours motion events
+  zoneId?: string;
+  zoneName?: string;
 }
 
 export interface OffHoursConfig {
