@@ -7,7 +7,8 @@ dotenv.config({ path: '../.env' });
 const program = new Command();
 
 program
-  .option('--scenario <name>', 'Scenario to run', 'normal')
+  .option('--scenario <name>', 'Scenario to run', 'normal') //npm start -- --scenario low-moisture <example> 
+
   .option('--verbose', 'Enable verbose logging', false)
   .option('--duration <minutes>', 'Run duration in minutes', '0')
   .parse(process.argv);
