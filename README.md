@@ -37,6 +37,12 @@ Dashboard & Mobile App
 - Safety interlocks (max duration, min intervals)
 - Usage tracking and analytics
 
+### WeatherModule
+- Real-time weather data from OpenWeatherMap API
+- Current conditions and 5-day forecast
+- Automatic location detection (browser geolocation)
+- Integrated with dashboard
+
 ### Device Simulator
 - Simulates 4 IoT devices publishing to MQTT
 - Realistic sensor data with variations

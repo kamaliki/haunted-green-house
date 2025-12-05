@@ -14,13 +14,14 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SecurityModule } from './modules/security/security.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { GreenhouseModule } from './modules/greenhouse/greenhouse.module';
+import { WeatherModule } from './modules/weather/weather.module';
 import { getDatabaseConfig } from './config/database.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../.env',
+      envFilePath: ['.env', '../.env'], // Try current dir first, then parent
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -39,6 +40,7 @@ import { getDatabaseConfig } from './config/database.config';
     SecurityModule,
     AuthModule,
     GreenhouseModule,
+    WeatherModule,
   ],
   controllers: [AppController],
   providers: [AppService],

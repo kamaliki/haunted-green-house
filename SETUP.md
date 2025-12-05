@@ -58,7 +58,15 @@ haunted-greenhouse-influxdb   running   0.0.0.0:8086->8086/tcp
 cp .env.example .env
 ```
 
-The default values in `.env` work for local development. You only need to edit if:
+**Required**: Get an OpenWeatherMap API key:
+1. Sign up at https://openweathermap.org/api (free tier is sufficient)
+2. Copy your API key from the dashboard
+3. Edit `.env` and add:
+   ```
+   OPENWEATHER_API_KEY=your-api-key-here
+   ```
+
+The default values for other settings work for local development. You only need to edit if:
 - You're using different ports
 - You're connecting to remote services
 - You want to customize thresholds
