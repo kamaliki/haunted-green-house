@@ -6,6 +6,15 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Add request logging middleware
+  app.use((req, res, next) => {
+    console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    if (req.body && Object.keys(req.body).length > 0) {
+      console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+    }
+    next();
+  });
+
   // Enable validation
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
@@ -13,7 +22,16 @@ async function bootstrap() {
   }));
 
   // Enable CORS
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:3001',
+      'http://frontend:3001',
+      'http://127.0.0.1:3001'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   // Swagger setup
   const config = new DocumentBuilder()

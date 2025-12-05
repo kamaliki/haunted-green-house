@@ -18,7 +18,7 @@ export class IrrigationMqttService implements OnModuleInit {
   private async subscribeToAlerts(): Promise<void> {
     // Subscribe to low soil moisture alerts from EnvironmentModule
     await this.mqttClientService.subscribe(
-      'greenhouse/alerts/soil_moisture_low',
+      'greenhouse/alerts/low_soil_moisture',
       this.handleLowMoistureAlert.bind(this),
     );
 
